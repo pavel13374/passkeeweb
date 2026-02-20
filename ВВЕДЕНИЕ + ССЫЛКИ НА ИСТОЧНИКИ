@@ -1,0 +1,67 @@
+	В современном цифровом мире среднестатистический пользователь имеет более 100 онлайн-аккаунтов. Каждый из них требует уникального и сложного пароля для обеспечения безопасности. Парадокс заключается в том, что чем сложнее пароль, тем сложнее его запомнить. Это приводит к тому, что 65% людей используют одни и те же пароли для разных сервисов, а 81% утечек данных происходит из-за слабых или скомпрометированных паролей.
+
+	Корпоративный сектор сталкивается с еще более серьезными вызовами. Средняя компания теряет около $3.92 миллиона при утечке данных, а управление доступом сотрудников к общим учетным записям часто превращается в хаос из-за использования общих паролей, записанных на стикерах или пересылаемых в мессенджерах.
+
+Существующие решения и их ограничения
+	На рынке представлены различные решения для управления паролями, но каждое имеет существенные недостатки:
+
+	KeePass — бесплатное решение с открытым кодом, но его интерфейс не менялся десятилетиями и выглядит устаревшим. Отсутствие встроенной синхронизации между устройствами и необходимость ручного копирования базы данных делают его неудобным для командной работы. Аудит действий и история изменений доступны только через сторонние плагины.
+
+	Passwork — современное веб-решение с богатым функционалом, но оно является коммерческим. Стоимость лицензии зависит от количества пользователей, что делает его дорогим для масштабирования. Компании платят от 250 рублей в месяц за каждого сотрудника, а для внедрения требуется развертывание MS SQL Server и IIS, что усложняет инфраструктуру.
+
+	Другие коммерческие решения (LastPass, 1Password, Dashlane) также требуют ежемесячной подписки, которая растет пропорционально размеру команды, а данные хранятся на серверах третьих сторон, что вызывает вопросы приватности.
+
+
+Flask и веб-разработка
+Flask Documentation — https://flask.palletsprojects.com/
+Официальная документация Flask. Использовалась для понимания работы маршрутов, шаблонов и структуры приложения.
+
+Miguel Grinberg's Flask Mega-Tutorial — https://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-i-hello-world
+Полное руководство по Flask, включая работу с базами данных, аутентификацию и структурирование кода.
+
+MDN Web Docs — https://developer.mozilla.org/
+Документация по HTML, формам и веб-технологиям для создания интерфейса.
+
+Flask-SQLAlchemy и базы данных
+SQLAlchemy Documentation — https://docs.sqlalchemy.org/
+Официальная документация ORM, использовалась для проектирования моделей данных и отношений.
+
+Flask-SQLAlchemy Documentation — https://flask-sqlalchemy.palletsprojects.com/
+Расширение Flask для работы с SQLAlchemy.
+
+Аутентификация и безопасность
+Flask-Login Documentation — https://flask-login.readthedocs.io/
+Управление пользовательскими сессиями и аутентификацией.
+
+Flask-Bcrypt Documentation — https://flask-bcrypt.readthedocs.io/
+Хеширование паролей с использованием bcrypt.
+
+OWASP Password Storage Cheat Sheet — https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+Рекомендации по безопасному хранению паролей.
+
+The Hacker News - Password Statistics — https://thehackernews.com/2023/11/new-password-statistics-2023.html
+
+Статистика и исследования
+Verizon Data Breach Investigations Report 2023 — https://www.verizon.com/business/resources/reports/dbir/
+[3] Статистика по утечкам данных и роли паролей в инцидентах безопасности.
+
+IBM Cost of a Data Breach Report 2023 — https://www.ibm.com/reports/data-breach
+[4] Данные о финансовых потерях компаний при утечках данных.
+
+NordPass Statistics — https://nordpass.com/most-common-passwords-list/
+[1] Данные о количестве аккаунтов у среднестатистического пользователя.
+
+Google/Harris Poll - Online Security Survey — https://services.google.com/fh/files/blogs/google_security_infographic.pdf
+[2] Исследование о повторном использовании паролей.
+
+Python и дополнительные модули
+Python Documentation — https://docs.python.org/3/
+Основы языка Python.
+
+Datetime Module — https://docs.python.org/3/library/datetime.html
+Работа с датами и временем в логах.
+
+Functools Documentation — https://docs.python.org/3/library/functools.html
+Декораторы и wraps для сохранения метаданных функций.
+
+
