@@ -67,12 +67,14 @@ venv\Scripts\activate     # Windows
 ```
 pip install -r requirements.txt
 ```
+
 4. ** Запуск приложения **
 Запустите инит бд в первую очередь, а далее - приложения с использованием символа запуска в PyCharm / VSCode или
 ```
 python init_db.py
 python app.py
 ```
+
 5. ** Перейдите в браузер, обратитесь к localhost, port 5000, http **
 6. Зарегистрируйте юзера, или пользуйтесь данными админа:
 ```
