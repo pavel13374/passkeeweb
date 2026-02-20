@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vault — Регистрация</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="auth-page">
+
+<div class="auth-bg">
+    <div class="auth-grid"></div>
+</div>
+
+<div class="auth-container">
+    <div class="auth-brand">
+        <span class="logo-icon">⬡</span>
+        <span class="logo-text">VAULT</span>
+    </div>
+
+    <div class="auth-card">
+        <h1 class="auth-title">Создать аккаунт</h1>
+        <p class="auth-subtitle">Ваши пароли под защитой</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST" class="auth-form">
+            <div class="form-group">
+                <label>Логин</label>
+                <input type="text" name="username" placeholder="Придумайте логин" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label>Пароль</label>
+                <div class="input-eye-wrap">
+                    <input type="password" name="password" id="regPass" placeholder="Мастер-пароль" required autocomplete="new-password">
+                    <button type="button" class="eye-btn" onclick="togglePass('regPass', this)">👁</button>
+                </div>
+            </div>
+            <div class="strength-bar" id="strengthBar">
+                <div class="strength-fill" id="strengthFill"></div>
+            </div>
+            <div class="strength-label" id="strengthLabel"></div>
+            <button type="submit" class="btn-primary btn-full">Создать аккаунт</button>
+        </form>
+
+        <p class="auth-switch">Уже есть аккаунт? <a href="{{ url_for('login') }}">Войти</a></p>
+    </div>
+</div>
+
+<script>
+function togglePass(id, btn) {
+    const el = document.getElementById(id);
+    el.type = el.type === 'password' ? 'text' : 'password';
+    btn.textContent = el.type === 'password' ? '👁' : '🙈';
+}
+
+document.getElementById('regPass').addEventListener('input', function() {
+    const val = this.value;
+    let score = 0;
+    if (val.length >= 8) score++;
+    if (/[A-Z]/.test(val)) score++;
+    if (/[0-9]/.test(val)) score++;
+    if (/[^A-Za-z0-9]/.test(val)) score++;
+
+    const fill = document.getElementById('strengthFill');
+    const label = document.getElementById('strengthLabel');
+    const colors = ['#ef4444','#f59e0b','#6366f1','#10b981'];
+    const labels = ['Слабый','Средний','Хороший','Сильный'];
+
+    fill.style.width = (score * 25) + '%';
+    fill.style.background = colors[score - 1] || '#333';
+    label.textContent = val ? labels[score - 1] || '' : '';
+    label.style.color = colors[score - 1] || '#999';
+});
+</script>
+</body>
+</html>

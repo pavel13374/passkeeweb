@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+    <div class="page-title-row">
+        <div class="vault-title-wrap">
+            <span class="vault-big-icon" style="background: rgba(79,70,229,0.1); color: var(--accent); font-size:22px;">👤</span>
+            <div>
+                <h1 class="page-title">{{ current_user.username }}</h1>
+                <p class="page-meta">
+                    Роль: {{ current_user.role.name if current_user.role else '—' }} ·
+                    Группы: {{ current_user.groups | map(attribute='name') | join(', ') or '—' }}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="content-area" style="max-width:700px; gap:20px;">
+
+    <!-- Change password -->
+    <div class="admin-card">
+        <h3 style="font-size:15px; font-weight:700; margin-bottom:18px;">🔒 Смена пароля</h3>
+        <form method="POST" action="{{ url_for('profile') }}">
+            <div class="form-group">
+                <label>Текущий пароль</label>
+                <div class="input-eye-wrap">
+                    <input type="password" name="current_password" id="curPass" placeholder="Введите текущий пароль" required>
+                    <button type="button" class="eye-btn" onclick="togglePass('curPass', this)">👁</button>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Новый пароль</label>
+                    <div class="input-eye-wrap">
+                        <input type="password" name="new_password" id="newPass" placeholder="Минимум 6 символов" required>
+                        <button type="button" class="eye-btn" onclick="togglePass('newPass', this)">👁</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Подтверждение</label>
+                    <div class="input-eye-wrap">
+                        <input type="password" name="confirm_password" id="confPass" placeholder="Повторите пароль" required>
+                        <button type="button" class="eye-btn" onclick="togglePass('confPass', this)">👁</button>
+                    </div>
+                </div>
+            </div>
+            <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+            <div class="strength-label" id="strengthLabel" style="margin-bottom:14px;"></div>
+            <button type="submit" class="btn-primary">Сохранить</button>
+        </form>
+    </div>
+
+    <!-- Activity log -->
+    <div class="admin-card">
+        <h3 style="font-size:15px; font-weight:700; margin-bottom:18px;">📋 Моя активность</h3>
+        {% if logs %}
+        <div class="audit-log-list">
+            {% for log in logs %}
+            <div class="audit-item">
+                <span class="audit-icon">{{ {'view_container':'👁','create_password':'➕','edit_password':'✏️','delete_password':'🗑','view_password':'🔍','grant_access':'🔑','revoke_access':'🚫','create_container':'📁'}.get(log.action, '•') }}</span>
+                <div class="audit-body">
+                    <span class="audit-action">{{ log.details or log.action }}</span>
+                </div>
+                <span class="audit-time">{{ log.timestamp.strftime('%d.%m.%Y %H:%M') }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color:var(--text-muted); font-size:13px;">Нет активности</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function togglePass(id, btn) {
+    const el = document.getElementById(id);
+    el.type = el.type === 'password' ? 'text' : 'password';
+    btn.textContent = el.type === 'password' ? '👁' : '🙈';
+}
+document.getElementById('newPass').addEventListener('input', function() {
+    const val = this.value;
+    let score = 0;
+    if (val.length >= 8) score++;
+    if (/[A-Z]/.test(val)) score++;
+    if (/[0-9]/.test(val)) score++;
+    if (/[^A-Za-z0-9]/.test(val)) score++;
+    const fill = document.getElementById('strengthFill');
+    const label = document.getElementById('strengthLabel');
+    const colors = ['#ef4444','#f59e0b','#6366f1','#10b981'];
+    const labels = ['Слабый','Средний','Хороший','Сильный'];
+    fill.style.width = (score * 25) + '%';
+    fill.style.background = colors[score - 1] || '#333';
+    label.textContent = val ? labels[score - 1] || '' : '';
+    label.style.color = colors[score - 1] || '#999';
+});
+</script>
+{% endblock %}

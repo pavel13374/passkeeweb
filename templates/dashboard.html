@@ -1,0 +1,409 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+    {% if current_container %}
+    <div class="breadcrumb">
+        <a href="{{ url_for('dashboard') }}">Хранилища</a>
+        {% if breadcrumb %}
+            {% for crumb in breadcrumb %}
+            <span class="breadcrumb-sep">›</span>
+            {% if not loop.last %}
+            <a href="{{ url_for('open_container', container_id=crumb.id) }}">{{ crumb.name }}</a>
+            {% else %}
+            <span class="breadcrumb-current">{{ crumb.name }}</span>
+            {% endif %}
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <div class="page-title-row">
+        <div class="vault-title-wrap">
+            <span class="vault-big-icon" style="background: {{ current_container.color }}20; color: {{ current_container.color }}">{{ current_container.icon }}</span>
+            <div>
+                <h1 class="page-title">{{ current_container.name }}</h1>
+                <p class="page-meta">
+                    {{ passwords|length }} паролей · {{ subcontainers|length }} вложенных
+                    {% if not is_owner %}<span class="shared-badge">общий</span>{% endif %}
+                </p>
+            </div>
+        </div>
+        <div class="page-actions">
+            {% if is_owner %}
+            <button class="btn-secondary" onclick="openVaultModal()">+ Папка</button>
+            <button class="btn-primary" onclick="openPasswordModal()">+ Пароль</button>
+            <button class="btn-secondary" onclick="toggleAccessPanel()">🔑 Доступ</button>
+            <div class="dropdown">
+                <button class="btn-icon" onclick="toggleDropdown(this)">⋮</button>
+                <div class="dropdown-menu">
+                    <a href="{{ url_for('delete_container', container_id=current_container.id) }}"
+                       onclick="return confirm('Удалить хранилище и всё содержимое?')"
+                       class="dropdown-item danger">🗑 Удалить хранилище</a>
+                </div>
+            </div>
+            {% else %}
+            <button class="btn-primary" onclick="openPasswordModal()">+ Пароль</button>
+            {% endif %}
+        </div>
+    </div>
+
+    {% else %}
+    <div class="page-title-row">
+        <div>
+            <h1 class="page-title">Все хранилища</h1>
+            <p class="page-meta">{{ total_containers }} хранилищ · {{ total_passwords }} паролей</p>
+        </div>
+        <button class="btn-primary" onclick="openVaultModal()">+ Хранилище</button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- STATS BAR (only on dashboard) -->
+{% if not current_container %}
+<div class="stats-bar">
+    <div class="stat-card">
+        <div class="stat-value">{{ total_passwords }}</div>
+        <div class="stat-label">Паролей</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ total_containers }}</div>
+        <div class="stat-label">Хранилищ</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">🔒</div>
+        <div class="stat-label">Защищено</div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ACCESS PANEL (collapsible, owner only) -->
+{% if current_container and is_owner %}
+<div id="accessPanel" class="access-panel" style="display:none;">
+    <div class="access-panel-header">
+        <h3 class="section-title" style="margin:0">🔑 Управление доступом</h3>
+        <button class="btn-ghost" style="padding:5px 12px; font-size:12px;" onclick="toggleAccessPanel()">Закрыть</button>
+    </div>
+
+    <!-- Grant form -->
+    <form method="POST" action="{{ url_for('grant_access', container_id=current_container.id) }}" class="access-form">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Тип доступа</label>
+                <select name="access_type" id="accessTypeSelect" onchange="switchAccessType(this.value)" class="form-select">
+                    <option value="user">Пользователь</option>
+                    <option value="group">Группа</option>
+                </select>
+            </div>
+            <div class="form-group" id="userSelectWrap">
+                <label>Пользователь</label>
+                <select name="user_id" class="form-select">
+                    <option value="">— выберите —</option>
+                    {% for u in all_users %}
+                    <option value="{{ u.id }}">{{ u.username }} ({{ u.role.name if u.role else '—' }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" id="groupSelectWrap" style="display:none;">
+                <label>Группа</label>
+                <select name="group_id" class="form-select">
+                    <option value="">— выберите —</option>
+                    {% for g in all_groups %}
+                    <option value="{{ g.id }}">{{ g.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" style="justify-content:flex-end; padding-top:20px;">
+                <button type="submit" class="btn-primary">Выдать</button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Current access rules -->
+    {% if access_rules %}
+    <div class="access-list">
+        <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted); margin-bottom:8px;">Текущий доступ</p>
+        {% for rule in access_rules %}
+        <div class="access-item">
+            <span class="access-type-badge {% if rule.user_id %}badge-user{% else %}badge-group{% endif %}">
+                {{ '👤' if rule.user_id else '👥' }}
+            </span>
+            <span class="access-name">
+                {% if rule.user_id %}{{ rule.user.username }}{% else %}{{ rule.group.name }}{% endif %}
+            </span>
+            <span class="access-meta">с {{ rule.granted_at.strftime('%d.%m.%Y') }}</span>
+            <a href="{{ url_for('revoke_access', container_id=current_container.id, access_id=rule.id) }}"
+               class="btn-revoke" onclick="return confirm('Отозвать доступ?')">✕ Отозвать</a>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="font-size:13px; color:var(--text-muted);">Нет выданных прав. Хранилище видно только вам.</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- CONTENT AREA -->
+<div class="content-area">
+
+    <!-- SUBCONTAINERS / VAULTS -->
+    {% if subcontainers or not current_container %}
+    <div class="section">
+        {% if current_container %}<h3 class="section-title">Папки</h3>{% endif %}
+        <div class="vaults-grid">
+            {% set display_containers = subcontainers if current_container else containers %}
+            {% for folder in display_containers %}
+            <div class="vault-card" style="--c: {{ folder.color }}">
+                <a href="{{ url_for('open_container', container_id=folder.id) }}" class="vault-card-link">
+                    <div class="vault-card-icon">{{ folder.icon }}</div>
+                    <div class="vault-card-name">{{ folder.name }}</div>
+                    <div class="vault-card-meta">{{ folder.passwords|length }} паролей</div>
+                </a>
+                {% if folder.user_id == current_user.id or current_user.is_admin() %}
+                <a href="{{ url_for('delete_container', container_id=folder.id) }}"
+                   class="vault-card-delete"
+                   onclick="return confirm('Удалить?')"
+                   title="Удалить">✕</a>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            {% if not display_containers %}
+            <div class="empty-state">
+                <div class="empty-icon">📦</div>
+                <p>Нет хранилищ. Создайте первое!</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- SHARED CONTAINERS (dashboard only) -->
+    {% if not current_container and shared_containers %}
+    <div class="section">
+        <h3 class="section-title">Общие хранилища</h3>
+        <div class="vaults-grid">
+            {% for folder in shared_containers %}
+            <div class="vault-card vault-card--shared" style="--c: {{ folder.color }}">
+                <a href="{{ url_for('open_container', container_id=folder.id) }}" class="vault-card-link">
+                    <div class="vault-card-icon">{{ folder.icon }}</div>
+                    <div class="vault-card-name">{{ folder.name }}</div>
+                    <div class="vault-card-meta">{{ folder.passwords|length }} паролей · {{ folder.owner.username }}</div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- PASSWORDS -->
+    {% if current_container %}
+    <div class="section">
+        <h3 class="section-title">Пароли</h3>
+
+        {% if passwords %}
+        <div class="passwords-list">
+            {% for pass in passwords %}
+            <div class="pass-item">
+                <div class="pass-avatar">{{ pass.title[0].upper() }}</div>
+                <div class="pass-info">
+                    <div class="pass-title">{{ pass.title }}</div>
+                    <div class="pass-login">{{ pass.login or '—' }}</div>
+                </div>
+                {% if pass.url %}
+                <a href="{{ pass.url if pass.url.startswith('http') else 'https://' + pass.url }}" target="_blank" class="pass-action" title="Открыть сайт">🌐</a>
+                {% endif %}
+                <button class="pass-action" onclick="copyAndLog('{{ pass.password or '' }}', {{ pass.id }})" title="Копировать пароль">📋</button>
+                <a href="{{ url_for('password_history', password_id=pass.id) }}" class="pass-action" title="История изменений">📜</a>
+                <button class="pass-action" onclick="openEditModal({{ pass.id }}, '{{ pass.title|e }}', '{{ pass.login|e }}', '{{ pass.password|e }}', '{{ pass.url or ''|e }}', `{{ pass.notes or '' }}`)" title="Редактировать">✏️</button>
+                <a href="{{ url_for('delete_password', password_id=pass.id) }}" class="pass-action danger" onclick="return confirm('Удалить?')" title="Удалить">🗑</a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">🔑</div>
+            <p>Нет паролей. Добавьте первый!</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- AUDIT LOG (container) -->
+    {% if container_logs %}
+    <div class="section">
+        <h3 class="section-title" style="cursor:pointer;" onclick="toggleLog()">
+            📋 История изменений <span id="logToggleIcon">▾</span>
+        </h3>
+        <div id="containerLog" class="audit-log-list">
+            {% for log in container_logs %}
+            <div class="audit-item">
+                <span class="audit-icon">{{ {'view_container':'👁','create_password':'➕','edit_password':'✏️','delete_password':'🗑','view_password':'🔍','grant_access':'🔑','revoke_access':'🚫','create_container':'📁'}.get(log.action, '•') }}</span>
+                <div class="audit-body">
+                    <span class="audit-action">{{ log.details or log.action }}</span>
+                    <span class="audit-user">{{ log.user.username }}</span>
+                </div>
+                <span class="audit-time">{{ log.timestamp.strftime('%d.%m.%Y %H:%M') }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+</div>
+
+<!-- PASSWORD MODAL -->
+{% if current_container %}
+<div id="passwordModal" class="modal-overlay" onclick="closePasswordModal(event)">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Новый пароль</h3>
+            <button class="modal-close" onclick="closePasswordModal()">✕</button>
+        </div>
+        <form method="POST" action="{{ url_for('create_password') }}">
+            <input type="hidden" name="container_id" value="{{ current_container.id }}">
+            <div class="form-group">
+                <label>Название *</label>
+                <input type="text" name="title" placeholder="Google, GitHub..." required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Логин / Email</label>
+                    <input type="text" name="login" placeholder="user@email.com">
+                </div>
+                <div class="form-group">
+                    <label>Пароль</label>
+                    <div class="input-eye-wrap">
+                        <input type="password" name="password" id="passPassword" placeholder="••••••••">
+                        <button type="button" class="eye-btn" onclick="togglePass('passPassword', this)">👁</button>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>URL</label>
+                <input type="text" name="url" placeholder="https://example.com">
+            </div>
+            <div class="form-group">
+                <label>Заметки</label>
+                <textarea name="notes" rows="3" placeholder="Дополнительная информация..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-ghost" onclick="generatePassword()">⚡ Сгенерировать</button>
+                <div style="flex:1"></div>
+                <button type="button" class="btn-ghost" onclick="closePasswordModal()">Отмена</button>
+                <button type="submit" class="btn-primary">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- EDIT PASSWORD MODAL -->
+<div id="editPasswordModal" class="modal-overlay" onclick="closeEditModal(event)">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Редактировать пароль</h3>
+            <button class="modal-close" onclick="closeEditModal()">✕</button>
+        </div>
+        <form method="POST" id="editPasswordForm">
+            <div class="form-group">
+                <label>Название *</label>
+                <input type="text" name="title" id="editTitle" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Логин / Email</label>
+                    <input type="text" name="login" id="editLogin">
+                </div>
+                <div class="form-group">
+                    <label>Пароль</label>
+                    <div class="input-eye-wrap">
+                        <input type="password" name="password" id="editPassword">
+                        <button type="button" class="eye-btn" onclick="togglePass('editPassword', this)">👁</button>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>URL</label>
+                <input type="text" name="url" id="editUrl">
+            </div>
+            <div class="form-group">
+                <label>Заметки</label>
+                <textarea name="notes" id="editNotes" rows="3"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-ghost" onclick="closeEditModal()">Отмена</button>
+                <button type="submit" class="btn-primary">Обновить</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- COPY TOAST -->
+<div id="copyToast" class="toast">Скопировано!</div>
+
+<script>
+function openPasswordModal() { document.getElementById('passwordModal').classList.add('active'); }
+function closePasswordModal(e) {
+    if (!e || e.target.id === 'passwordModal' || !e.target.closest?.('.modal-box')) {
+        document.getElementById('passwordModal').classList.remove('active');
+    }
+}
+function openEditModal(id, title, login, password, url, notes) {
+    document.getElementById('editTitle').value = title;
+    document.getElementById('editLogin').value = login;
+    document.getElementById('editPassword').value = password;
+    document.getElementById('editUrl').value = url;
+    document.getElementById('editNotes').value = notes;
+    document.getElementById('editPasswordForm').action = `/edit_password/${id}`;
+    document.getElementById('editPasswordModal').classList.add('active');
+}
+function closeEditModal(e) {
+    if (!e || e.target.id === 'editPasswordModal' || !e.target.closest?.('.modal-box')) {
+        document.getElementById('editPasswordModal').classList.remove('active');
+    }
+}
+function togglePass(id, btn) {
+    const el = document.getElementById(id);
+    el.type = el.type === 'password' ? 'text' : 'password';
+    btn.textContent = el.type === 'password' ? '👁' : '🙈';
+}
+function copyAndLog(pass, passId) {
+    if (!pass) return;
+    navigator.clipboard.writeText(pass).then(() => {
+        fetch(`/view_password/${passId}`);
+        const toast = document.getElementById('copyToast');
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2000);
+    });
+}
+function generatePassword() {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+    const pass = Array.from({length: 16}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    const el = document.getElementById('passPassword');
+    el.value = pass;
+    el.type = 'text';
+}
+function toggleDropdown(btn) { btn.nextElementSibling.classList.toggle('show'); }
+document.addEventListener('click', e => {
+    if (!e.target.closest('.dropdown')) {
+        document.querySelectorAll('.dropdown-menu.show').forEach(m => m.classList.remove('show'));
+    }
+});
+function toggleAccessPanel() {
+    const p = document.getElementById('accessPanel');
+    p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+function switchAccessType(val) {
+    document.getElementById('userSelectWrap').style.display = val === 'user' ? '' : 'none';
+    document.getElementById('groupSelectWrap').style.display = val === 'group' ? '' : 'none';
+}
+function toggleLog() {
+    const log = document.getElementById('containerLog');
+    const icon = document.getElementById('logToggleIcon');
+    const hidden = log.style.display === 'none';
+    log.style.display = hidden ? '' : 'none';
+    icon.textContent = hidden ? '▾' : '▸';
+}
+</script>
+{% endblock %}

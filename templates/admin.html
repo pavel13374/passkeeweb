@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+    <div class="page-title-row">
+        <div>
+            <h1 class="page-title">⚙ Администрирование</h1>
+            <p class="page-meta">{{ users|length }} пользователей · {{ groups|length }} групп</p>
+        </div>
+    </div>
+</div>
+
+<div class="content-area" style="gap:20px;">
+
+    <!-- TABS -->
+    <div class="admin-tabs">
+        <button class="admin-tab active" onclick="switchTab('users', this)">👤 Пользователи</button>
+        <button class="admin-tab" onclick="switchTab('groups', this)">👥 Группы</button>
+        <button class="admin-tab" onclick="switchTab('logs', this)">📋 Журнал</button>
+    </div>
+
+    <!-- USERS TAB -->
+    <div id="tab-users" class="admin-tab-content">
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Пользователь</th>
+                        <th>Роль</th>
+                        <th>Группы</th>
+                        <th>Статус</th>
+                        <th>Создан</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr class="{{ 'row-inactive' if not user.is_active else '' }}">
+                        <td>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <span class="user-avatar" style="width:30px;height:30px;font-size:12px;background:var(--accent);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ user.username[0].upper() }}</span>
+                                <span style="font-weight:600;">{{ user.username }}</span>
+                                {% if user.id == current_user.id %}<span class="badge-you">you</span>{% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <form method="POST" action="{{ url_for('admin_set_role') }}" style="display:flex; gap:6px; align-items:center;">
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <select name="role_id" class="form-select-sm" onchange="this.form.submit()">
+                                    <option value="">— нет —</option>
+                                    {% for role in roles %}
+                                    <option value="{{ role.id }}" {% if user.role_id == role.id %}selected{% endif %}>{{ role.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                        </td>
+                        <td>
+                            <form method="POST" action="{{ url_for('admin_set_group') }}" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <div class="groups-checkboxes">
+                                    {% set user_group_ids = user.groups | map(attribute='id') | list %}
+                                    {% for group in groups %}
+                                    <label class="group-check">
+                                        <input type="checkbox" name="group_ids" value="{{ group.id }}"
+                                               {% if group.id in user_group_ids %}checked{% endif %}
+                                               onchange="this.closest('form').submit()">
+                                        {{ group.name }}
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </form>
+                        </td>
+                        <td>
+                            <span class="status-badge {{ 'status-active' if user.is_active else 'status-inactive' }}">
+                                {{ 'Активен' if user.is_active else 'Заблокирован' }}
+                            </span>
+                        </td>
+                        <td style="font-family:'DM Mono',monospace; font-size:11px; color:var(--text-muted);">
+                            {{ user.created_at.strftime('%d.%m.%Y') }}
+                        </td>
+                        <td>
+                            {% if user.id != current_user.id %}
+                            <a href="{{ url_for('admin_toggle_user', user_id=user.id) }}"
+                               class="btn-sm {{ 'btn-sm-danger' if user.is_active else 'btn-sm-success' }}"
+                               onclick="return confirm('{{ 'Заблокировать' if user.is_active else 'Активировать' }} пользователя?')">
+                                {{ '🚫 Блок' if user.is_active else '✓ Разблок' }}
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- GROUPS TAB -->
+    <div id="tab-groups" class="admin-tab-content" style="display:none;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+            <!-- Create group -->
+            <div class="admin-card">
+                <h3 style="font-size:14px; font-weight:700; margin-bottom:16px;">Создать группу</h3>
+                <form method="POST" action="{{ url_for('admin_create_group') }}">
+                    <div class="form-group">
+                        <label>Название</label>
+                        <input type="text" name="name" placeholder="devops, marketing..." required>
+                    </div>
+                    <div class="form-group">
+                        <label>Описание</label>
+                        <input type="text" name="description" placeholder="Краткое описание группы">
+                    </div>
+                    <button type="submit" class="btn-primary">Создать</button>
+                </form>
+            </div>
+
+            <!-- Groups list -->
+            <div class="admin-card">
+                <h3 style="font-size:14px; font-weight:700; margin-bottom:16px;">Существующие группы</h3>
+                {% if groups %}
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    {% for group in groups %}
+                    <div class="group-row">
+                        <div>
+                            <span style="font-weight:600;">{{ group.name }}</span>
+                            {% if group.description %}
+                            <span style="font-size:12px; color:var(--text-muted); margin-left:8px;">{{ group.description }}</span>
+                            {% endif %}
+                            <div style="font-size:11px; color:var(--text-muted); margin-top:2px; font-family:'DM Mono',monospace;">
+                                {{ group.members.count() }} чел.
+                            </div>
+                        </div>
+                        <a href="{{ url_for('admin_delete_group', group_id=group.id) }}"
+                           class="btn-sm btn-sm-danger"
+                           onclick="return confirm('Удалить группу?')">✕</a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p style="color:var(--text-muted); font-size:13px;">Нет групп</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Roles info -->
+        <div class="admin-card" style="margin-top:20px;">
+            <h3 style="font-size:14px; font-weight:700; margin-bottom:16px;">Роли в системе</h3>
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:10px;">
+                {% for role in roles %}
+                <div class="role-card">
+                    <div class="role-name">{{ role.name }}</div>
+                    <div class="role-desc">{{ role.description }}</div>
+                    <div class="role-count">{{ role.users|length }} пользователей</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGS TAB -->
+    <div id="tab-logs" class="admin-tab-content" style="display:none;">
+        <div class="admin-card">
+            <h3 style="font-size:14px; font-weight:700; margin-bottom:16px;">Последние события (50)</h3>
+            <div class="audit-log-list">
+                {% for log in recent_logs %}
+                <div class="audit-item">
+                    <span class="audit-icon">{{ {'view_container':'👁','create_password':'➕','edit_password':'✏️','delete_password':'🗑','view_password':'🔍','grant_access':'🔑','revoke_access':'🚫','create_container':'📁'}.get(log.action, '•') }}</span>
+                    <div class="audit-body">
+                        <span class="audit-action">{{ log.details or log.action }}</span>
+                        <span class="audit-user">{{ log.user.username }}</span>
+                    </div>
+                    <span class="audit-time">{{ log.timestamp.strftime('%d.%m.%Y %H:%M') }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function switchTab(name, btn) {
+    document.querySelectorAll('.admin-tab-content').forEach(t => t.style.display = 'none');
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + name).style.display = '';
+    btn.classList.add('active');
+}
+</script>
+{% endblock %}
